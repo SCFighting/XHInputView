@@ -17,7 +17,7 @@
 #define XHInputView_CountLabHeight 20
 #define XHInputView_BgViewColor [UIColor colorWithRed:0 green:0 blue:0 alpha:0.3]
 
-#define XHInputView_StyleLarge_Height 170
+#define XHInputView_StyleLarge_Height 120
 #define XHInputView_StyleDefault_Height 45
 
 static CGFloat keyboardAnimationDuration = 0.5;
@@ -30,11 +30,14 @@ static CGFloat keyboardAnimationDuration = 0.5;
 @property (nonatomic, strong) UILabel *countLab;
 @property (nonatomic, strong) UILabel *placeholderLab;
 @property (nonatomic, strong) UIButton *sendButton;
+@property (nonatomic, strong) UIView *divideLineView;
+@property (nonatomic, strong) UIButton *unfoldButton;
 @property (nonatomic, assign) InputViewStyle style;
 
 @property (nonatomic, assign) CGRect showFrameDefault;
 @property (nonatomic, assign) CGRect sendButtonFrameDefault;
 @property (nonatomic, assign) CGRect textViewFrameDefault;
+@property (nonatomic, assign) CGRect textBGViewFrameDefault;
 
 /** 发送按钮点击回调 */
 @property (nonatomic, copy) BOOL(^sendBlcok)(NSString *text);
@@ -45,14 +48,22 @@ static CGFloat keyboardAnimationDuration = 0.5;
 
 -(void)dealloc{
     //NSLog(@"XHInputView 销毁");
-    if(_style == InputViewStyleDefault){
-        [_textView removeObserver:self forKeyPath:@"contentSize"];
-    }
+    [_textView removeObserver:self forKeyPath:@"contentSize"];
 }
 +(void)showWithStyle:(InputViewStyle)style configurationBlock:(void(^)(XHInputView *inputView))configurationBlock sendBlock:(BOOL(^)(NSString *text))sendBlock{
     XHInputView *inputView = [[XHInputView alloc] initWithStyle:style];
-    UIWindow *window = [UIApplication sharedApplication].delegate.window;
-    [window addSubview:inputView];
+    UIWindow *keywindow;
+    NSArray *windows = [[UIApplication sharedApplication] windows];
+        for(UIWindow *window in [windows reverseObjectEnumerator]) {
+            if ([window isKindOfClass:[UIWindow class]] &&
+                window.windowLevel == UIWindowLevelNormal &&
+                CGRectEqualToRect(window.bounds, [UIScreen mainScreen].bounds))
+                keywindow = window;
+        }
+    if (keywindow == nil) {
+        keywindow = [UIApplication sharedApplication].delegate.window;
+    }
+    [keywindow addSubview:inputView];
     if(configurationBlock) configurationBlock(inputView);
     inputView.sendBlcok = [sendBlock copy];
     [inputView show];
@@ -65,9 +76,9 @@ static CGFloat keyboardAnimationDuration = 0.5;
     _textView.text = nil;
     _placeholderLab.hidden = NO;
     
-    if(_style == InputViewStyleLarge){
-        if(_maxCount>0) _countLab.text = [NSString stringWithFormat:@"0/%ld",(long)_maxCount];
-    }
+//    if(_style == InputViewStyleLarge){
+//        if(_maxCount>0) _countLab.text = [NSString stringWithFormat:@"0/%ld",(long)_maxCount];
+//    }
     
     [_textView becomeFirstResponder];
 }
@@ -104,14 +115,15 @@ static CGFloat keyboardAnimationDuration = 0.5;
     [self addGestureRecognizer:tap];
     
     _inputView = [[UIView alloc] init];
-    _inputView.backgroundColor = [UIColor whiteColor];
+    _inputView.backgroundColor = [UIColor redColor];
+    
     [self addSubview:_inputView];
     
     switch (_style) {
         case InputViewStyleDefault:{
             
             _inputView.frame = CGRectMake(0, XHInputView_ScreenH, XHInputView_ScreenW, XHInputView_StyleDefault_Height);
-            
+            _showFrameDefault = _inputView.frame;
             /** StyleDefaultUI */
             CGFloat sendButtonWidth = 45;
             CGFloat sendButtonHeight = _inputView.bounds.size.height -2*XHInputView_StyleDefault_TBSpace;
@@ -143,49 +155,49 @@ static CGFloat keyboardAnimationDuration = 0.5;
         }
             break;
         case InputViewStyleLarge:{
-            
-            CGFloat height = 170;
-            if(XHInputView_ScreenH<=320){
-                height = 90;
-            }else if(XHInputView_ScreenH<=375){
-                height = 140;
-            }
-            _inputView.frame = CGRectMake(0, XHInputView_ScreenH, XHInputView_ScreenW, height);
+            _inputView.frame = CGRectMake(0, XHInputView_ScreenH, XHInputView_ScreenW, XHInputView_StyleLarge_Height);
+            _showFrameDefault = _inputView.frame;
             
             /** StyleLargeUI */
             CGFloat sendButtonWidth = 58;
             CGFloat sendButtonHeight = 29;
             _sendButton = [UIButton buttonWithType:UIButtonTypeCustom];
-            _sendButton.frame = CGRectMake(XHInputView_ScreenW - XHInputView_StyleLarge_LRSpace - sendButtonWidth, self.inputView.frame.size.height - XHInputView_StyleLarge_TBSpace - sendButtonHeight, sendButtonWidth, sendButtonHeight);
             _sendButton.backgroundColor = [UIColor blueColor];
             [_sendButton setTitle:@"发送" forState:UIControlStateNormal];
             _sendButton.titleLabel.font = [UIFont systemFontOfSize:13];
             _sendButton.layer.cornerRadius = 1.5;
+            _sendButton.clipsToBounds = true;
             [_sendButton addTarget:self action:@selector(sendButtonClick:) forControlEvents:UIControlEventTouchUpInside];
             [_inputView addSubview:_sendButton];
+            _sendButton.frame = CGRectMake(CGRectGetMaxX(_inputView.frame) - XHInputView_StyleLarge_LRSpace - sendButtonWidth, CGRectGetHeight(_inputView.frame) - XHInputView_StyleLarge_TBSpace - sendButtonHeight, sendButtonWidth, sendButtonHeight);
             
-            _textBgView = [[UIView alloc] initWithFrame:CGRectMake(XHInputView_StyleLarge_LRSpace, XHInputView_StyleLarge_TBSpace, XHInputView_ScreenW-2*XHInputView_StyleLarge_LRSpace, CGRectGetMinY(_sendButton.frame)-2*XHInputView_StyleLarge_TBSpace)];
-            _textBgView.backgroundColor = [UIColor groupTableViewBackgroundColor];
+            _divideLineView = [[UIView alloc] init];
+            _divideLineView.backgroundColor = UIColor.lightGrayColor;
+            _divideLineView.frame = CGRectMake(0, CGRectGetMinY(_sendButton.frame) - XHInputView_StyleLarge_TBSpace, XHInputView_ScreenW, 1);
+            [_inputView addSubview:_divideLineView];
+            
+            _textBgView = [[UIView alloc] initWithFrame:CGRectMake(XHInputView_StyleLarge_LRSpace, XHInputView_StyleLarge_TBSpace, CGRectGetWidth(_inputView.frame)-2*XHInputView_StyleLarge_LRSpace, CGRectGetMinY(_divideLineView.frame)-2*XHInputView_StyleLarge_TBSpace)];
+            _textBgView.backgroundColor = UIColor.yellowColor;
+            _textBGViewFrameDefault = _textBgView.frame;
             [_inputView addSubview:_textBgView];
             
-            _textView = [[UITextView alloc] initWithFrame:CGRectMake(0, 0, _textBgView.bounds.size.width, _textBgView.bounds.size.height-XHInputView_CountLabHeight)];
-            _textView.backgroundColor = [UIColor clearColor];
+            _textView = [[UITextView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(_textBgView.frame), CGRectGetHeight(_textBgView.frame))];
+            _textView.backgroundColor = [UIColor blueColor];
+            _textView.textColor = UIColor.redColor;
             _textView.font = [UIFont systemFontOfSize:15];
             _textView.delegate = self;
+            //KVO监听contentSize变化
+            [_textView addObserver:self forKeyPath:@"contentSize" options:NSKeyValueObservingOptionNew context:NULL];
             [_textBgView addSubview:_textView];
             
-            _placeholderLab = [[UILabel alloc] initWithFrame:CGRectMake(7, 0, _textView.bounds.size.width-14, 35)];
+            _placeholderLab = [[UILabel alloc] initWithFrame:CGRectMake(7, 0, CGRectGetWidth(_textView.frame) - 14, 35)];
             _placeholderLab.font = _textView.font;
             _placeholderLab.text = @"请输入...";
             _placeholderLab.textColor = [UIColor lightGrayColor];
             [_textView addSubview:_placeholderLab];
             
-            _countLab = [[UILabel alloc] initWithFrame:CGRectMake(0,_textView.bounds.size.height, _textBgView.bounds.size.width-5, XHInputView_CountLabHeight)];
-            _countLab.font = [UIFont systemFontOfSize:14];
-            _countLab.textColor =  [UIColor lightGrayColor];
-            _countLab.textAlignment = NSTextAlignmentRight;
-            _countLab.backgroundColor = _textView.backgroundColor;
-            [_textBgView addSubview:_countLab];
+            _sendButtonFrameDefault = _sendButton.frame;
+            _textViewFrameDefault = _textView.frame;
         }
             break;
         default:
@@ -199,25 +211,71 @@ static CGFloat keyboardAnimationDuration = 0.5;
 {
     if(object == _textView && [keyPath isEqualToString:@"contentSize"]){
         CGFloat height = _textView.contentSize.height;
-        CGFloat heightDefault = XHInputView_StyleDefault_Height;
-        if(height >= heightDefault){
-            [UIView animateWithDuration:0.3 animations:^{
-                //调整frame
-                CGRect frame = _showFrameDefault;
-                frame.size.height = height;
-                frame.origin.y = _showFrameDefault.origin.y - (height - _showFrameDefault.size.height);
-                _inputView.frame = frame;
-                //调整sendButton frame
-                _sendButton.frame = CGRectMake(XHInputView_ScreenW - XHInputView_StyleDefault_LRSpace - _sendButton.frame.size.width, _inputView.bounds.size.height - _sendButton.bounds.size.height - XHInputView_StyleDefault_TBSpace, _sendButton.bounds.size.width, _sendButton.bounds.size.height);
-                //调整textView frame
-                _textView.frame = CGRectMake(XHInputView_StyleDefault_LRSpace, XHInputView_StyleDefault_TBSpace, _textView.bounds.size.width, _inputView.bounds.size.height - 2*XHInputView_StyleDefault_TBSpace);
-            }];
-        }else{
-            [UIView animateWithDuration:0.3 animations:^{
-                [self resetFrameDefault];//恢复到,键盘弹出时,视图初始位置
-            }];
+        if (_style == InputViewStyleDefault)
+        {
+            CGFloat heightDefault = XHInputView_StyleDefault_Height;
+            if(height >= heightDefault){
+                [UIView animateWithDuration:0.3 animations:^{
+                    //调整frame
+                    CGRect frame = self->_showFrameDefault;
+                    frame.size.height = height;
+                    frame.origin.y = self->_showFrameDefault.origin.y - (height - self->_showFrameDefault.size.height);
+                    self->_inputView.frame = frame;
+                    //调整sendButton frame
+                    self->_sendButton.frame = CGRectMake(XHInputView_ScreenW - XHInputView_StyleDefault_LRSpace - self->_sendButton.frame.size.width, self->_inputView.bounds.size.height - self->_sendButton.bounds.size.height - XHInputView_StyleDefault_TBSpace, self->_sendButton.bounds.size.width, self->_sendButton.bounds.size.height);
+                    //调整textView frame
+                    self->_textView.frame = CGRectMake(XHInputView_StyleDefault_LRSpace, XHInputView_StyleDefault_TBSpace, self->_textView.bounds.size.width, self->_inputView.bounds.size.height - 2*XHInputView_StyleDefault_TBSpace);
+                    
+                }];
+            }
+            else
+            {
+                [UIView animateWithDuration:0.3 animations:^{
+                    [self resetFrameDefault];//恢复到,键盘弹出时,视图初始位置
+                }];
+            }
         }
-    }else{
+        else if (_style == InputViewStyleLarge)
+        {
+            CGFloat heightDefault = _textViewFrameDefault.size.height;
+            if(height >= heightDefault){
+                [UIView animateWithDuration:0.3 animations:^{
+                    CGFloat space = height - heightDefault;
+                    if (space > 120)
+                    {
+                        return;
+                    }
+                    //更新inputview frame
+                    CGRect inputViewFrame = self->_showFrameDefault;
+                    inputViewFrame.origin.y = inputViewFrame.origin.y - space;
+                    inputViewFrame.size.height += space;
+                    self->_inputView.frame = inputViewFrame;
+                    //更新发送按钮
+                    self->_sendButton.frame = CGRectMake(CGRectGetMaxX(self->_inputView.frame) - XHInputView_StyleLarge_LRSpace - 58, CGRectGetHeight(self->_inputView.frame) - XHInputView_StyleLarge_TBSpace - 29, 58, 29);
+                    //更新分割线
+                    self->_divideLineView.frame =  CGRectMake(0, CGRectGetMinY(self->_sendButton.frame) - XHInputView_StyleLarge_TBSpace, XHInputView_ScreenW, 1);
+                    
+                    //更新textviewbg
+                    CGRect textBGViewFrame = self->_textBGViewFrameDefault;
+                    textBGViewFrame.size.height += space;
+                    self->_textBgView.frame = textBGViewFrame;
+                    
+                    //更新textview
+                    CGRect textViewFrame = self->_textViewFrameDefault;
+                    textViewFrame.size.height += space;
+                    self->_textView.frame = textViewFrame;
+                }];
+            }
+            else
+            {
+                [UIView animateWithDuration:0.3 animations:^{
+                    [self resetFrameDefault];//恢复到,键盘弹出时,视图初始位置
+                }];
+            }
+        }
+    }
+    else
+    {
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
 }
@@ -233,22 +291,27 @@ static CGFloat keyboardAnimationDuration = 0.5;
     self.inputView.frame = _showFrameDefault;
     self.sendButton.frame = _sendButtonFrameDefault;
     self.textView.frame =_textViewFrameDefault;
+    self.textBgView.frame = _textBGViewFrameDefault;
 }
 
 -(void)textViewDidChange:(UITextView *)textView{
     if(textView.text.length){
         _placeholderLab.hidden = YES;
+        [_sendButton setEnabled:YES];
+        [_sendButton setBackgroundColor:_sendButtonBackgroundColor];
     }else{
         _placeholderLab.hidden = NO;
+        [_sendButton setEnabled:NO];
+        [_sendButton setBackgroundColor:[_sendButtonBackgroundColor colorWithAlphaComponent:0.2]];
     }
-    if(_maxCount>0){
-        if(textView.text.length>=_maxCount){
-            textView.text = [textView.text substringToIndex:_maxCount];
-        }
-        if(_style == InputViewStyleLarge){
-            _countLab.text = [NSString stringWithFormat:@"%ld/%ld",(long)textView.text.length,(long)_maxCount];
-        }
-    }
+//    if(_maxCount>0){
+//        if(textView.text.length>=_maxCount){
+//            textView.text = [textView.text substringToIndex:_maxCount];
+//        }
+//        if(_style == InputViewStyleLarge){
+//            _countLab.text = [NSString stringWithFormat:@"%ld/%ld",(long)textView.text.length,(long)_maxCount];
+//        }
+//    }
 }
 
 #pragma mark - Action
@@ -295,21 +358,91 @@ static CGFloat keyboardAnimationDuration = 0.5;
 }
 
 #pragma mark - set
--(void)setMaxCount:(NSInteger)maxCount{
-    _maxCount = maxCount;
-    if(_style == InputViewStyleLarge){
-        _countLab.text = [NSString stringWithFormat:@"0/%ld",(long)maxCount];
-    }
+////发送按钮不可用颜色
+//@property (nonatomic, strong) UIColor *sendButtonUnEnableColor;
+////发送按钮可用颜色
+//@property (nonatomic, strong) UIColor *sendButtonEnableColor;
+///** 发送按钮Title */
+//@property (nonatomic, copy) NSString *sendButtonTitle;
+///** 发送按钮圆角大小 */
+//@property (nonatomic, assign) CGFloat sendButtonCornerRadius;
+///** 发送按钮字体 */
+//@property (nonatomic, strong) UIFont * sendButtonFont;
+//
+////分割线颜色
+//@property (nonatomic, strong) UIColor *divideLineColor;
+//
+///** 输入框背景颜色 */
+//@property (nonatomic, strong) UIColor* textViewBackgroundColor;
+///** 输入框文字颜色 */
+//@property (nonatomic, strong) UIColor* textViewTextColor;
+///** 输入框字体 */
+//@property (nonatomic, strong) UIFont* textViewTextFont;
+//
+///** 占位符 */
+//@property (nonatomic, copy) NSString *placeholder;
+///** 占位符颜色 */
+//@property (nonatomic, strong) UIColor *placeholderColor;
+
+
+-(void)setInputViewBackgroundColor:(UIColor *)inputViewBackgroundColor
+{
+    _inputViewBackgroundColor = inputViewBackgroundColor;
+    _inputView.backgroundColor = inputViewBackgroundColor;
 }
--(void)setTextViewBackgroundColor:(UIColor *)textViewBackgroundColor{
+
+-(void)setInputViewCorners:(CACornerMask)inputViewCorners
+{
+    _inputViewCorners = inputViewCorners;
+    _inputView.layer.cornerRadius = 13;
+    _inputView.layer.maskedCorners = inputViewCorners;
+}
+
+-(void)setSendButtonTitle:(NSString *)sendButtonTitle
+{
+    _sendButtonTitle = sendButtonTitle;
+    [_sendButton setTitle:sendButtonTitle forState:UIControlStateNormal];
+}
+
+- (void)setSendButtonCornerRadius:(CGFloat)sendButtonCornerRadius
+{
+    _sendButtonCornerRadius = sendButtonCornerRadius;
+    _sendButton.layer.cornerRadius = sendButtonCornerRadius;
+    _sendButton.clipsToBounds = true;
+}
+
+-(void)setSendButtonFont:(UIFont *)sendButtonFont
+{
+    _sendButtonFont = sendButtonFont;
+    [_sendButton.titleLabel setFont:sendButtonFont];
+}
+
+- (void)setDivideLineColor:(UIColor *)divideLineColor
+{
+    _divideLineColor = divideLineColor;
+    _divideLineView.backgroundColor = divideLineColor;
+}
+
+-(void)setTextViewBackgroundColor:(UIColor *)textViewBackgroundColor
+{
     _textViewBackgroundColor = textViewBackgroundColor;
     _textBgView.backgroundColor = textViewBackgroundColor;
+    _textView.backgroundColor = textViewBackgroundColor;
 }
--(void)setFont:(UIFont *)font{
-    _font = font;
-    _textView.font = font;
-    _placeholderLab.font = _textView.font;
+
+-(void)setTextViewTextColor:(UIColor *)textViewTextColor
+{
+    _textViewTextColor = textViewTextColor;
+    _textView.textColor = textViewTextColor;
 }
+
+-(void)setTextViewTextFont:(UIFont *)textViewTextFont
+{
+    _textViewTextFont = textViewTextFont;
+    _textView.font = textViewTextFont;
+    _placeholderLab.font = textViewTextFont;
+}
+
 -(void)setPlaceholder:(NSString *)placeholder{
     _placeholder = placeholder;
     _placeholderLab.text = placeholder;
@@ -317,23 +450,20 @@ static CGFloat keyboardAnimationDuration = 0.5;
 -(void)setPlaceholderColor:(UIColor *)placeholderColor{
     _placeholderColor = placeholderColor;
     _placeholderLab.textColor = placeholderColor;
-    _countLab.textColor = placeholderColor;
 }
--(void)setSendButtonBackgroundColor:(UIColor *)sendButtonBackgroundColor{
+
+- (void)setSendButtonBackgroundColor:(UIColor *)sendButtonBackgroundColor
+{
     _sendButtonBackgroundColor = sendButtonBackgroundColor;
-    _sendButton.backgroundColor = sendButtonBackgroundColor;
-}
--(void)setSendButtonTitle:(NSString *)sendButtonTitle{
-    _sendButtonTitle = sendButtonTitle;
-    [_sendButton setTitle:sendButtonTitle forState:UIControlStateNormal];
-}
--(void)setSendButtonCornerRadius:(CGFloat)sendButtonCornerRadius{
-    _sendButtonCornerRadius = sendButtonCornerRadius;
-    _sendButton.layer.cornerRadius = sendButtonCornerRadius;
-}
--(void)setSendButtonFont:(UIFont *)sendButtonFont{
-    _sendButtonFont = sendButtonFont;
-    _sendButton.titleLabel.font = sendButtonFont;
+    if (_textView.text.length <= 0) {
+        [_sendButton setEnabled:false];
+        _sendButton.backgroundColor = [sendButtonBackgroundColor colorWithAlphaComponent:0.2];
+    }
+    else
+    {
+        [_sendButton setEnabled:true];
+        _sendButton.backgroundColor = sendButtonBackgroundColor;
+    }
 }
 
 @end

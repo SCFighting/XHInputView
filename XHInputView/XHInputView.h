@@ -56,18 +56,13 @@ typedef NS_ENUM(NSInteger,InputViewStyle) {
 @interface XHInputView : UIView
 
 @property (nonatomic, assign) id<XHInputViewDelagete> delegate;
+/** 整个输入框背景色 */
+@property (nonatomic, strong) UIColor *inputViewBackgroundColor;
+/// 整个输入框圆角
+@property (nonatomic, assign) CACornerMask inputViewCorners;
 
-/** 最大输入字数 */
-@property (nonatomic, assign) NSInteger maxCount;
-/** 字体 */
-@property (nonatomic, strong) UIFont * font;
-/** 占位符 */
-@property (nonatomic, copy) NSString *placeholder;
-/** 占位符颜色 */
-@property (nonatomic, strong) UIColor *placeholderColor;
-/** 输入框背景颜色 */
-@property (nonatomic, strong) UIColor* textViewBackgroundColor;
-/** 发送按钮背景色 */
+
+//发送按钮颜色
 @property (nonatomic, strong) UIColor *sendButtonBackgroundColor;
 /** 发送按钮Title */
 @property (nonatomic, copy) NSString *sendButtonTitle;
@@ -75,6 +70,31 @@ typedef NS_ENUM(NSInteger,InputViewStyle) {
 @property (nonatomic, assign) CGFloat sendButtonCornerRadius;
 /** 发送按钮字体 */
 @property (nonatomic, strong) UIFont * sendButtonFont;
+
+//分割线颜色
+@property (nonatomic, strong) UIColor *divideLineColor;
+
+/** 输入框背景颜色 */
+@property (nonatomic, strong) UIColor* textViewBackgroundColor;
+/** 输入框文字颜色 */
+@property (nonatomic, strong) UIColor* textViewTextColor;
+/** 输入框字体 */
+@property (nonatomic, strong) UIFont* textViewTextFont;
+
+/** 占位符 */
+@property (nonatomic, copy) NSString *placeholder;
+/** 占位符颜色 */
+@property (nonatomic, strong) UIColor *placeholderColor;
+
+
+/** 最大输入字数 */
+//@property (nonatomic, assign) NSInteger maxCount;
+/** 字体 */
+//@property (nonatomic, strong) UIFont * font;
+
+
+
+
 
 
 /**
